@@ -32,19 +32,30 @@ class DTDPM(object):  # diffusion with discrete timesteps
         logging.info("DTDPM with clip_x0={} clip_cov_x0={} avg_cov={}".format(self.clip_x0, self.clip_cov_x0, self.avg_cov))
         self.statistics = {}
 
-    def predict_x0_eps(self, xt, t):  # estimate E[x0|xt], E[eps|xt] w.r.t. q
+    def predict_x0_eps(self, xt, t, eps_scaler=1.0):  # estimate E[x0|xt], E[eps|xt] w.r.t. q
         if self.wrapper.typ in ['eps', 'x0']:
             pred = self.wrapper(xt, t)
         elif self.wrapper.typ.startswith('eps_'):
             pred, _ = self.wrapper(xt, t)
         else:
             raise NotImplementedError
-        x0_pred, eps_pred = self._predict_x0_eps(pred, xt, t)
+        x0_pred, eps_pred = self._predict_x0_eps(pred, xt, t, eps_scaler)  # Analytic DPM goes here
         return x0_pred, eps_pred
 
-    def _predict_x0_eps(self, pred, xt, t):  # pred: the direct output of the first model
+    def _predict_x0_eps(self, pred, xt, t, eps_scaler=1.0):  # pred: the direct output of the first model
         if self.wrapper.typ == 'eps' or self.wrapper.typ.startswith('eps_'):
             eps_pred = pred
+
+            # epsilon scaling
+            # if t<=100:
+            #     use_scaler = eps_scaler
+            # else:
+            #     use_scaler = 1.0
+
+            logging.info(f"using scaler: {eps_scaler} at timestep {t}")
+            eps_pred = eps_pred / eps_scaler
+
+            # pred_x0 given pred_eps
             x0_pred = self.cum_alphas[t] ** -0.5 * xt - (self.cum_betas[t] / self.cum_alphas[t]) ** 0.5 * eps_pred
         elif self.wrapper.typ == 'x0':
             x0_pred = pred
@@ -100,9 +111,9 @@ class DTDPM(object):  # diffusion with discrete timesteps
             self.statistics['cov_x0_clip'] = cov_x0_pred.item()
         return cov_x0_pred
 
-    def predict_x0_eps_cov_x0(self, xt, t, ms_eps=None):  # for typ = "optimal"
+    def predict_x0_eps_cov_x0(self, xt, t, ms_eps=None, eps_scaler=1.0):  # for typ = "optimal"
         if ms_eps is not None:
-            x0_pred, eps_pred = self.predict_x0_eps(xt, t)
+            x0_pred, eps_pred = self.predict_x0_eps(xt, t, eps_scaler)  # Analytic-DPM eps goes here
             cov_x0_pred = self.predict_cov_x0(None, t, ms_eps)
             return x0_pred, eps_pred, cov_x0_pred
 
@@ -113,7 +124,7 @@ class DTDPM(object):  # diffusion with discrete timesteps
             pred2 = None
         else:
             raise NotImplementedError
-        x0_pred, eps_pred = self._predict_x0_eps(pred1, xt, t)
+        x0_pred, eps_pred = self._predict_x0_eps(pred1, xt, t, eps_scaler)
         cov_x0_pred = self._predict_cov_x0(pred1, pred2, xt, t)
         return x0_pred, eps_pred, cov_x0_pred
 
@@ -131,13 +142,14 @@ class DTDPM(object):  # diffusion with discrete timesteps
     def _predict_cov_prev(self, s, t, typ, cov_x0_pred=None):
         raise NotImplementedError
 
-    def predict_xprev_cov_xprev(self, xt, s, t, typ, ms_eps=None):
+    def predict_xprev_cov_xprev(self, xt, s, t, typ, ms_eps=None, eps_scaler=1.0):
         if typ == 'optimal':
-            x0_pred, eps_pred, cov_x0_pred = self.predict_x0_eps_cov_x0(xt, t, ms_eps)
+            x0_pred, eps_pred, cov_x0_pred = self.predict_x0_eps_cov_x0(xt, t, ms_eps, eps_scaler)
         else:
-            x0_pred, eps_pred = self.predict_x0_eps(xt, t)
+            x0_pred, eps_pred = self.predict_x0_eps(xt, t, eps_scaler)
             cov_x0_pred = None
-        xprev_pred = self.q_posterior_mean(x0_pred, s, t, xt=xt, eps=eps_pred)
+
+        xprev_pred = self.q_posterior_mean(x0_pred, s, t, xt=xt, eps=eps_pred)  # eps_pred not used in DDPM below
         sigma2 = self._predict_cov_prev(s, t, typ, cov_x0_pred)
         return xprev_pred, sigma2
 
@@ -169,7 +181,7 @@ class DDPM(DTDPM):
             sigma2 = torch.tensor(sigma2, device=global_device())
         return sigma2
 
-    def predict_xprev_cov_xprev(self, xt, s, t, typ, ms_eps=None):
+    def predict_xprev_cov_xprev(self, xt, s, t, typ, ms_eps=None, eps_scaler=1.0):
         if self.wrapper.typ == "eps_iddpm" and typ == "optimal" and ms_eps is None:
             eps_pred, model_var_values = self.wrapper(xt, t)
             x0_pred, eps_pred = self._predict_x0_eps(eps_pred, xt, t)
@@ -181,7 +193,7 @@ class DDPM(DTDPM):
             sigma2 = model_log_variance.exp()
             return xprev_pred, sigma2
         else:
-            return super().predict_xprev_cov_xprev(xt, s, t, typ, ms_eps)
+            return super().predict_xprev_cov_xprev(xt, s, t, typ, ms_eps, eps_scaler)
 
 
 class DDIM(DTDPM):

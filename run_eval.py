@@ -10,6 +10,7 @@ def parse_args():
     parser.add_argument('--phase', type=str, required=True)
     parser.add_argument('--description', type=str)
     parser.add_argument('--ckpt', type=str, default='best')
+    parser.add_argument('--eps_scaler', type=float, default=1.0)
 
     hparams_types = dict(
         pretrained_path=str,  # path to evaluated model
@@ -70,7 +71,7 @@ def main():
         args.hparams.setdefault('n_samples', 50000)  # 5w samples for FID by default
         hparams = {**args.hparams, 'pretrained_path': args.pretrained_path, **args.hparams}
         config = create_sample_config(get_evaluate_config, args.workspace, args.ckpt, hparams, keys, args.description)
-        run_evaluate(config)
+        run_evaluate(config, args.eps_scaler)
     elif args.phase == "nll4test":
         args.hparams.setdefault('n_samples', None)  # all test samples
         hparams = {**args.hparams, 'pretrained_path': args.pretrained_path, **args.hparams}

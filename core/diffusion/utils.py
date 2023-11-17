@@ -6,4 +6,5 @@ def statistics2str(statistics):
 
 
 def report_statistics(s, t, statistics):
-    logging.info(f'[(s, r): ({s:.6g}, {t:.6g})] [{statistics2str(statistics)}]')
+    pass
+    # logging.info(f'[(s, r): ({s:.6g}, {t:.6g})] [{statistics2str(statistics)}]')

@@ -123,8 +123,8 @@ def create_dataset(config):
 # Create evaluator from a profile
 ################################################################################
 
-def create_evaluator(config, wrapper, dataset, interact):
-    return config.cls(**config.kwargs, wrapper=wrapper, dataset=dataset, interact=interact)
+def create_evaluator(config, wrapper, dataset, interact, eps_scaler):
+    return config.cls(**config.kwargs, wrapper=wrapper, dataset=dataset, interact=interact, eps_scaler=eps_scaler)
 
 
 ################################################################################

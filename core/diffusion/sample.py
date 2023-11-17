@@ -10,7 +10,7 @@ from .trajectory import _choice_steps
 
 
 @ torch.no_grad()
-def sample_dtdpm(dtdpm, x_init, rev_var_type, trajectory='linear', sample_steps=None, clip_sigma_idx=0, clip_pixel=2, ms_eps=None):
+def sample_dtdpm(dtdpm, x_init, rev_var_type, trajectory='linear', sample_steps=None, clip_sigma_idx=0, clip_pixel=2, ms_eps=None, eps_scaler=1.0):
     r"""
     Sample from the reverse model p(x0|x1)...p(xN-1|xN)p(xN) proposed in DDPM, DDIM and Analytic-DPM
     """
@@ -21,17 +21,17 @@ def sample_dtdpm(dtdpm, x_init, rev_var_type, trajectory='linear', sample_steps=
     timesteps = [0] + ns
     logging.info("sample_dtdpm with rev_var_type={}, trajectory={}, sample_steps={}, clip_sigma_idx={}, clip_pixel={}"
                  .format(rev_var_type, trajectory, sample_steps, clip_sigma_idx, clip_pixel))
-    return _sample_dtdpm(dtdpm, x_init, rev_var_type, timesteps, clip_sigma_idx, clip_pixel, ms_eps)
+    return _sample_dtdpm(dtdpm, x_init, rev_var_type, timesteps, clip_sigma_idx, clip_pixel, ms_eps, eps_scaler)
 
 
 @ torch.no_grad()
-def _sample_dtdpm(dtdpm, x_init, rev_var_type, timesteps, clip_sigma_idx=0, clip_pixel=2, ms_eps=None):
+def _sample_dtdpm(dtdpm, x_init, rev_var_type, timesteps, clip_sigma_idx=0, clip_pixel=2, ms_eps=None, eps_scaler=1.0):
     assert isinstance(dtdpm, DTDPM)
     assert timesteps[0] == 0
     x = x_init
     for s, t in list(zip(timesteps, timesteps[1:]))[::-1]:
         dtdpm.statistics = {}
-        x_mean, sigma2 = dtdpm.predict_xprev_cov_xprev(x, s, t, rev_var_type, ms_eps)
+        x_mean, sigma2 = dtdpm.predict_xprev_cov_xprev(x, s, t, rev_var_type, ms_eps, eps_scaler)
         if s != 0:
             if s <= timesteps[clip_sigma_idx]:  # clip_sigma_idx = 0 <=> not clip
                 dtdpm.statistics['sigma2_unclip'] = sigma2.mean().item()

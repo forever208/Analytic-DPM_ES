@@ -19,7 +19,7 @@ import random
 
 class DTDPMEvaluator(Evaluator):
     def __init__(self, wrapper, options: dict,
-                 dataset: DatasetFactory = None, interact: Interact = None):
+                 dataset: DatasetFactory = None, interact: Interact = None, eps_scaler=1.0):
         r""" Evaluate DPM with discrete timesteps
         Args:
             wrapper: an object of Wrapper
@@ -33,6 +33,7 @@ class DTDPMEvaluator(Evaluator):
         self.dataset = dataset
         self.unpreprocess_fn = None if self.dataset is None else self.dataset.unpreprocess
         self.interact = interact
+        self.eps_scaler = eps_scaler
 
     def grid_sample(self, it, schedule, rev_var_type, path, clip_x0=True, sample_steps=None, nrow=10, ncol=10):
         fname = os.path.join(path, "%d.png" % it)
@@ -41,7 +42,7 @@ class DTDPMEvaluator(Evaluator):
 
         def sample_fn(n_samples):
             x_init = torch.randn(n_samples, *self.dataset.data_shape, device=global_device())
-            return sample_dtdpm(diffusion, x_init, rev_var_type, sample_steps=sample_steps)
+            return sample_dtdpm(diffusion, x_init, rev_var_type, sample_steps=sample_steps, eps_scaler=self.eps_scaler)
         grid_sample(fname, nrow, ncol, sample_fn, self.unpreprocess_fn)
 
     def sample2dir(self, path, n_samples, batch_size, schedule, forward_type, rev_var_type, clip_x0=True, avg_cov=False,
@@ -68,8 +69,10 @@ class DTDPMEvaluator(Evaluator):
         def sample_fn(_n_samples):
             x_init = torch.randn(_n_samples, *self.dataset.data_shape, device=global_device())
             return sample_dtdpm(diffusion, x_init, rev_var_type, trajectory=trajectory, sample_steps=sample_steps,
-                                clip_sigma_idx=clip_sigma_idx, clip_pixel=clip_pixel, ms_eps=ms_eps)
+                                clip_sigma_idx=clip_sigma_idx, clip_pixel=clip_pixel, ms_eps=ms_eps, eps_scaler=self.eps_scaler)
         sample2dir(path, n_samples, batch_size, sample_fn, self.unpreprocess_fn, persist)
+
+        # compute FID
         if self.dataset.fid_stat is not None:
             from tools.fid_score import calculate_fid_given_paths
             fid = calculate_fid_given_paths((self.dataset.fid_stat, path))

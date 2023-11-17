@@ -67,7 +67,7 @@ def run_train(config):
               )
 
 
-def run_evaluate(config):
+def run_evaluate(config, eps_scaler=1.0):
     config = ml_collections.FrozenConfigDict(config)
     set_seed(config.seed)
     set_deterministic(config.deterministic)
@@ -77,8 +77,9 @@ def run_evaluate(config):
     interact.report_machine()
     models = config_utils.create_models(config.models)  # use pretrained_path to load models
     wrapper = config_utils.create_wrapper(config.wrapper, models)
+    interact.eps_scaler = eps_scaler
     dataset = config_utils.create_dataset(config.dataset)
-    evaluator = config_utils.create_evaluator(config.evaluator, wrapper, dataset, interact)
+    evaluator = config_utils.create_evaluator(config.evaluator, wrapper, dataset, interact, eps_scaler)
     models.to(global_device())
     models.eval()
     evaluator.evaluate()

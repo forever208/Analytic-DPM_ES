@@ -33,7 +33,7 @@ limitations under the License.
 """
 import os
 import pathlib
-
+import logging
 import numpy as np
 import torch
 import torchvision.transforms as TF
@@ -243,6 +243,7 @@ def calculate_fid_given_paths(paths, device=None, batch_size=50, dims=2048, num_
     else:
         device = torch.device(device)
 
+    logging.info(f"computing FID between: {paths[0]} and {paths[1]}")
     for p in paths:
         if not os.path.exists(p):
             raise RuntimeError('Invalid path: %s' % p)
