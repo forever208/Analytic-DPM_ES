@@ -1,4 +1,4 @@
-# Extended Analytic-DPM
+# Extended Analytic-DPM with Epsilon Scaling
 
 * This is the official implementation for [Estimating the Optimal Covariance with Imperfect Mean in Diffusion Probabilistic Models](https://arxiv.org/abs/2206.07309) (Accepted in ICML 2022). It extends [Analytic-DPM](https://arxiv.org/abs/2201.06503) under the following two settings:
     * The reverse process adpots complicated covariance matrices dependent to states, instead of simple scalar variances (which motivates the SN-DPM in the paper).
@@ -8,6 +8,7 @@
 
 * Models and FID statistics are available <a href="#model">here</a> to reproduce results in this paper.
 
+* [Epsilon Scaling](https://arxiv.org/abs/2308.15321) has been added into sampling by specifying `--eps_scaler xxx`. Using `--eps_scaler 1.0` means not using epsilon scaling.
 
 ## Dependencies
 The codebase is based on `pytorch`. The dependencies are listed below.

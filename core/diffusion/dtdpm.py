@@ -47,11 +47,6 @@ class DTDPM(object):  # diffusion with discrete timesteps
             eps_pred = pred
 
             # epsilon scaling
-            # if t<=100:
-            #     use_scaler = eps_scaler
-            # else:
-            #     use_scaler = 1.0
-
             logging.info(f"using scaler: {eps_scaler} at timestep {t}")
             eps_pred = eps_pred / eps_scaler
 
